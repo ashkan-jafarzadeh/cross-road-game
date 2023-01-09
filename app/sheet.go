@@ -4,8 +4,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const Rows = 40
-const Cols = 70
+var Rows = 20
+var Cols = 60
 
 type col map[int]bool
 type cells map[int]col

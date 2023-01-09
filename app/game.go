@@ -1,10 +1,10 @@
 package app
 
 import (
+	"errors"
+	"fmt"
 	"github.com/gdamore/tcell/v2"
 	"github.com/sirupsen/logrus"
-	"math/rand"
-	"strings"
 	"time"
 )
 
@@ -12,97 +12,76 @@ type Game struct {
 	log     *logrus.Logger
 	sheet   *Sheet
 	display *Display
+	player  *Player
+	line    *Line
+	lost    bool
 }
 
-func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
-	row := y1
-	col := x1
-	for _, r := range []rune(text) {
-		s.SetContent(col, row, r, nil, style)
-		col++
-		if col >= x2 {
-			s.SetContent(col-1, row, rune(' '), nil, style)
-		}
-		if row > y2 {
-			break
-		}
-	}
-}
-
-func (g Game) Run() {
-	//defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
-
-	for i := 0; i < Rows; i++ {
+func (g *Game) Run() {
+	g.player.show()
+	for i := 0; i < Rows-1; i++ {
 		if i%8 == 0 {
-			go g.createRestLine(i)
+			go g.line.createRest(i)
 		} else {
-			go g.createLine(i)
+			go g.line.create(i)
 		}
 	}
 
 	for {
-		//Log.Info(rowFirst[35])
+		if g.hit() {
+			break
+		}
 		g.display.Screen.Show()
 		time.Sleep(time.Microsecond * 1000)
 	}
+	g.display.Screen.PostEvent(tcell.NewEventError(errors.New(fmt.Sprintf("Your Point: %d", g.player.point))))
 }
 
-func (g Game) createLine(row int) {
+func (g *Game) HandleEvents() {
 	for {
-		g.createVehicle(row, time.Duration(0), 0)
-	}
+		// Poll event
+		ev := g.display.Screen.PollEvent()
 
-	//duration := time.Microsecond * time.Duration(rand.Intn(10-3+1)+3) * 10000
-	//for {
-	//	vehicleLength := rand.Intn(25)
-	//	waitDuration := duration * time.Duration(vehicleLength+rand.Intn(8-3+1)+3)
-	//
-	//	select {
-	//	case <-time.After(waitDuration):
-	//		go g.createVehicle(row, duration, vehicleLength)
-	//	}
-	//}
+		// Process event
+		switch ev := ev.(type) {
+		case *tcell.EventError:
+			g.display.Screen.Clear()
+			g.display.draw((Cols-2)/2, (Rows-1)/2, g.display.defStyle, ev.Error())
+			g.lost = true
+			g.display.Screen.Sync()
+			//return
+		case *tcell.EventResize:
+			g.display.Screen.Sync()
+		case *tcell.EventKey:
+			if g.lost {
+				return
+				//InitGame()
+			}
+			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
+				return
+			}
+
+			switch ev.Key() {
+			case tcell.KeyUp:
+				finished := g.player.moveUp()
+				if finished {
+					g.line.resetRests()
+				}
+			case tcell.KeyDown:
+				g.player.moveDown()
+			case tcell.KeyRight:
+				g.player.moveRight()
+			case tcell.KeyLeft:
+				g.player.moveLeft()
+			}
+		}
+	}
 }
 
-func (g Game) createVehicle(row int, duration time.Duration, vehicleLength int) {
-	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
-	duration = time.Microsecond * time.Duration(rand.Intn(10)) * 10000
-	vehicleLength = rand.Intn(25)
-
-	c := 0
-	for c < Cols+vehicleLength {
-		l := vehicleLength
-		x := c - l
-		if c < l {
-			l = c
-			x = 0
-		}
-		g.sheet.cells[row][x+l] = true
-		drawText(g.display.Screen, x, row, Cols, Rows, defStyle, strings.Repeat("=", l))
-		if x != 0 {
-			drawText(g.display.Screen, x-1, row, Cols, Rows, defStyle, " ")
-			g.sheet.cells[row][x-1] = false
-		}
-		time.Sleep(duration)
-		c++
-	}
-}
-
-func (g Game) createRestLine(row int) {
-	defStyle := tcell.StyleDefault.Background(tcell.ColorGray).Foreground(tcell.ColorReset)
-	str := ""
-	for i := 0; i < Cols; i++ {
-		if rand.Intn(4) == 1 {
-			g.sheet.cells[row][i] = true
-			str += "#"
-		} else {
-			str += " "
-		}
-	}
-	drawText(g.display.Screen, 0, row, Cols, Rows, defStyle, str)
-	//drawText(g.display.Screen, 0, row, Cols, Rows, defStyle, strings.Repeat(" ", Cols))
+func (g *Game) hit() bool {
+	return g.sheet.cells[g.player.currentRow][g.player.currentCol]
 }
 
 func NewGame(log *logrus.Logger, sheet *Sheet, display *Display) *Game {
-	return &Game{log: log, sheet: sheet, display: display}
+	return &Game{log: log, sheet: sheet, display: display, player: NewPlayer(display), line: NewLine(sheet, display)}
 }

@@ -5,11 +5,13 @@ import (
 )
 
 type Display struct {
-	Screen tcell.Screen
+	Screen   tcell.Screen
+	defStyle tcell.Style
 }
 
 func NewDisplay() (*Display, error) {
 	d := &Display{}
+	d.defStyle = tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
 	err := d.InitScreen()
 
 	return d, err
@@ -25,12 +27,12 @@ func (d *Display) InitScreen() error {
 	}
 
 	// Set default text style
-	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
-	s.SetStyle(defStyle)
+	s.SetStyle(d.defStyle)
 
 	// Clear Screen
 	s.Clear()
 
+	Cols, Rows = s.Size()
 	//s.SetSize(Cols, Rows)
 
 	d.Screen = s
@@ -49,23 +51,19 @@ func (d *Display) Quit() {
 	}
 }
 
-func (d *Display) HandleEvents() {
-	for {
-		// Poll event
-		ev := d.Screen.PollEvent()
-
-		// Process event
-		switch ev := ev.(type) {
-		case *tcell.EventResize:
-			d.Screen.Sync()
-		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				return
-			} else if ev.Key() == tcell.KeyCtrlL {
-				d.Screen.Sync()
-			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
-				//s.Clear()
-			}
+func (d *Display) draw(x1, y1 int, style tcell.Style, text string) {
+	x2 := Cols
+	y2 := Rows
+	row := y1
+	col := x1
+	for _, r := range []rune(text) {
+		d.Screen.SetContent(col, row, r, nil, style)
+		col++
+		if col >= x2 {
+			d.Screen.SetContent(col-1, row, rune(' '), nil, style)
+		}
+		if row > y2 {
+			break
 		}
 	}
 }
