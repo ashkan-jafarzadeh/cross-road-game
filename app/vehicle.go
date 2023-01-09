@@ -28,7 +28,7 @@ func (v *Vehicle) create(row int) {
 			l = c
 			x = 0
 		}
-		v.sheet.cells[row][x] = true
+		v.sheet.cells[row][x+l-1] = true
 
 		v.display.draw(x, row, v.display.defStyle, strings.Repeat(v.char, l))
 		if x != 0 {
