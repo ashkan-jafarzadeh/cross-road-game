@@ -13,7 +13,12 @@ type Player struct {
 }
 
 func NewPlayer(display *Display) *Player {
-	return &Player{display: display, char: "🕴", currentRow: Rows - 1, currentCol: (Cols - 2) / 2}
+	return &Player{
+		display: display,
+		//char:       "🕴",
+		char:       "🐐",
+		currentRow: Rows - 1,
+		currentCol: (Cols - 2) / 2}
 }
 
 func (p *Player) show() {

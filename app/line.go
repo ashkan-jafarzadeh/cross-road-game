@@ -1,25 +1,35 @@
 package app
 
 import (
+	"context"
 	"github.com/gdamore/tcell/v2"
 	"math/rand"
+	"time"
 )
 
 type Line struct {
 	sheet    *Sheet
 	display  *Display
+	vehicle  *Vehicle
 	treeChar string
 	rests    []int
 }
 
 func NewLine(sheet *Sheet, display *Display) *Line {
-	return &Line{display: display, sheet: sheet, treeChar: "🎄"}
+	return &Line{display: display, sheet: sheet, vehicle: NewVehicle(sheet, display), treeChar: "🎄"}
 }
 
-func (l *Line) create(row int) {
-	v := NewVehicle(l.sheet, l.display)
+func (l *Line) create(row int, ctx context.Context) {
+	speed := time.Microsecond * time.Duration(rand.Intn(14)+2) * 10000
+	go l.vehicle.create(row, speed, rand.Intn(Cols/3), rand.Intn(Cols), ctx)
+
 	for {
-		v.create(row)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(speed * time.Duration(rand.Intn(50)+40)):
+			go l.vehicle.create(row, speed, rand.Intn(Cols/3), 0, ctx)
+		}
 	}
 }
 
@@ -34,7 +44,7 @@ func (l *Line) createRest(row int) {
 	style := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
 	str := ""
 	for i := 0; i < Cols; i++ {
-		if rand.Intn(4) == 1 {
+		if rand.Intn(5) == 1 {
 			l.sheet.cells[row][i] = true
 			str += l.treeChar
 		} else {

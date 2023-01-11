@@ -1,31 +1,29 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/gdamore/tcell/v2"
-	"github.com/sirupsen/logrus"
 	"time"
 )
 
 type Game struct {
-	log     *logrus.Logger
-	sheet   *Sheet
-	display *Display
-	player  *Player
-	line    *Line
-	lost    bool
+	sheet    *Sheet
+	display  *Display
+	player   *Player
+	line     *Line
+	lost     bool
+	quitLine context.CancelFunc
+}
+
+func NewGame(sheet *Sheet, display *Display) *Game {
+	return &Game{sheet: sheet, display: display, player: NewPlayer(display), line: NewLine(sheet, display)}
 }
 
 func (g *Game) Run() {
 	g.player.show()
-	for i := 0; i < Rows-1; i++ {
-		if i%8 == 0 {
-			go g.line.createRest(i)
-		} else {
-			go g.line.create(i)
-		}
-	}
+	g.createRoad()
 
 	for {
 		if g.hit() {
@@ -37,6 +35,22 @@ func (g *Game) Run() {
 	g.display.Screen.PostEvent(tcell.NewEventError(errors.New(fmt.Sprintf("Your Point: %d", g.player.point))))
 }
 
+func (g *Game) hit() bool {
+	return g.sheet.cells[g.player.currentRow][g.player.currentCol]
+}
+
+func (g *Game) createRoad() {
+	ctx, cancel := context.WithCancel(context.Background())
+	g.quitLine = cancel
+	for i := 0; i < Rows-1; i++ {
+		if i%8 == 0 {
+			go g.line.createRest(i)
+		} else {
+			go g.line.create(i, ctx)
+		}
+	}
+}
+
 func (g *Game) HandleEvents() {
 	for {
 		// Poll event
@@ -45,15 +59,12 @@ func (g *Game) HandleEvents() {
 		// Process event
 		switch ev := ev.(type) {
 		case *tcell.EventError:
-			g.display.Screen.Clear()
-			g.display.draw((Cols-2)/2, (Rows-1)/2, g.display.defStyle, ev.Error())
-			g.lost = true
-			g.display.Screen.Sync()
+			g.showPoint(ev.Error())
 			//return
 		case *tcell.EventResize:
 			g.display.Screen.Sync()
 		case *tcell.EventKey:
-			if g.lost {
+			if g.lost && ev.Key() == tcell.KeyEnter {
 				return
 				//InitGame()
 			}
@@ -65,7 +76,7 @@ func (g *Game) HandleEvents() {
 			case tcell.KeyUp:
 				finished := g.player.moveUp()
 				if finished {
-					g.line.resetRests()
+					g.refreshGame()
 				}
 			case tcell.KeyDown:
 				g.player.moveDown()
@@ -78,10 +89,20 @@ func (g *Game) HandleEvents() {
 	}
 }
 
-func (g *Game) hit() bool {
-	return g.sheet.cells[g.player.currentRow][g.player.currentCol]
+func (g *Game) showPoint(str string) {
+	g.quitLine()
+	g.display.Screen.Clear()
+	style := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorRed)
+	g.display.draw((Cols-10)/2, (Rows-1)/2, style, str)
+	g.lost = true
+	g.display.Screen.Sync()
 }
 
-func NewGame(log *logrus.Logger, sheet *Sheet, display *Display) *Game {
-	return &Game{log: log, sheet: sheet, display: display, player: NewPlayer(display), line: NewLine(sheet, display)}
+func (g *Game) refreshGame() {
+	g.quitLine()
+	g.display.Screen.Clear()
+	g.sheet.refresh()
+	g.player.show()
+	g.createRoad()
+	//g.line.resetRests()
 }
