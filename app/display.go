@@ -26,24 +26,16 @@ func (d *Display) InitScreen() error {
 		return err
 	}
 
-	// Set default text style
 	s.SetStyle(d.defStyle)
-
-	// Clear Screen
 	s.Clear()
 
 	Cols, Rows = s.Size()
-	//s.SetSize(Cols, Rows)
-
 	d.Screen = s
 
 	return nil
 }
 
 func (d *Display) Quit() {
-	// You have to catch panics in a defer, clean up, and
-	// re-raise them - otherwise your application can
-	// die without leaving any diagnostic trace.
 	maybePanic := recover()
 	d.Screen.Fini()
 	if maybePanic != nil {

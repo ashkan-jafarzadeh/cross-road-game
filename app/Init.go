@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"syscall"
@@ -8,6 +9,7 @@ import (
 
 func InitGame() {
 	redirectStderr()
+	setMode()
 
 	d, err := NewDisplay()
 	if err != nil {
@@ -21,6 +23,25 @@ func InitGame() {
 
 	go game.Run()
 	game.HandleEvents()
+}
+
+func setMode() {
+	var mode string
+	fmt.Print("Choose mode: (default: Normal) \n  [0]: Easy \n  [1]: Normal \n  [2]: Hard \n\n  : ")
+	fmt.Scanf("%s", &mode)
+
+	if mode == "0" {
+		vehicleSpeedMax = 20
+		vehicleSpeedMin = 5
+		vehiclesDelayMax = 120
+		vehiclesDelayMin = 70
+	}
+	if mode == "2" {
+		vehiclesDelayMax = 10
+		vehiclesDelayMin = 0
+		vehiclesDelayMax = 70
+		vehiclesDelayMin = 25
+	}
 }
 
 // redirectStderr to the file passed in

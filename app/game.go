@@ -8,6 +8,13 @@ import (
 	"time"
 )
 
+var (
+	vehicleSpeedMax  = 15
+	vehicleSpeedMin  = 2
+	vehiclesDelayMax = 90
+	vehiclesDelayMin = 40
+)
+
 type Game struct {
 	sheet    *Sheet
 	display  *Display
@@ -15,6 +22,7 @@ type Game struct {
 	line     *Line
 	lost     bool
 	quitLine context.CancelFunc
+	mode     int
 }
 
 func NewGame(sheet *Sheet, display *Display) *Game {

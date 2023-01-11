@@ -20,14 +20,14 @@ func NewLine(sheet *Sheet, display *Display) *Line {
 }
 
 func (l *Line) create(row int, ctx context.Context) {
-	speed := time.Microsecond * time.Duration(rand.Intn(14)+2) * 10000
+	speed := time.Microsecond * time.Duration(rand.Intn(vehicleSpeedMax-vehicleSpeedMin+1)+vehicleSpeedMin) * 10000
 	go l.vehicle.create(row, speed, rand.Intn(Cols/3), rand.Intn(Cols), ctx)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(speed * time.Duration(rand.Intn(50)+40)):
+		case <-time.After(speed * time.Duration(rand.Intn(vehiclesDelayMax-vehiclesDelayMin+1)+vehiclesDelayMin)):
 			go l.vehicle.create(row, speed, rand.Intn(Cols/3), 0, ctx)
 		}
 	}
