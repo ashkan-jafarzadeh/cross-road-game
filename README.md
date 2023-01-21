@@ -10,7 +10,7 @@ go mod tidy
 go run main.go
 ```
 
-Or you can download the executable from [here]() and run:
+Or you can download the executable from [here](https://github.com/ashkan-jafarzadeh/cross-road-game/releases/download/V1.0.0/cross-road-game), give it the needed permission (`chmod +x cross-road-game`) and run:
 ```sh
 ./cross-road-game
 ```
